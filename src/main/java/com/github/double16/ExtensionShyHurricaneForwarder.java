@@ -286,7 +286,7 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor implements 
         Map<String, String> map = new HashMap<>();
         for (HttpHeaderField header : headers.getHeaders()) {
             String katanaHeaderName = header.getName().toLowerCase().replace('-', '_');
-            if (map.containsKey(header.getName())) {
+            if (map.containsKey(katanaHeaderName)) {
                 map.put(katanaHeaderName, map.get(katanaHeaderName) + ";" + header.getValue());
             } else {
                 map.put(katanaHeaderName, header.getValue());
