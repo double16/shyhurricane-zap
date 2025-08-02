@@ -296,7 +296,7 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor implements 
     }
 
     @Override
-    public void onHttpRequestSend(HttpMessage msg, int initiator, HttpSender sender) {
+    public void onHttpResponseReceive(HttpMessage msg, int initiator, HttpSender sender) {
         if (onlyInScope && !msg.isInScope()) {
             return;
         }
@@ -366,7 +366,7 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor implements 
     }
 
     @Override
-    public void onHttpResponseReceive(HttpMessage msg, int initiator, HttpSender sender) {
+    public void onHttpRequestSend(HttpMessage msg, int initiator, HttpSender sender) {
         // do nothing
     }
 }
