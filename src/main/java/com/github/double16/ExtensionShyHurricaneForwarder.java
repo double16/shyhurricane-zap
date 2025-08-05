@@ -82,15 +82,55 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor implements 
      */
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
-    // TODO: config items:
-    private final boolean onlyInScope = true;
-    private final String mcpServerUrl = "http://localhost:8000";
-    private final int minimumConfidenceLevel = Alert.CONFIDENCE_MEDIUM;
-    private final int minimumRiskLevel = Alert.RISK_INFO;
+    private final ShyHurricaneOptionsParam param = new ShyHurricaneOptionsParam();
 
     @SuppressWarnings("unused")
     public ExtensionShyHurricaneForwarder() {
         super(NAME);
+    }
+
+    boolean isOnlyInScope() {
+        return param.isOnlyInScope();
+    }
+
+    String getMcpServerUrl() {
+        return param.getMcpServerUrl();
+    }
+
+    int getMinimumConfidenceLevel() {
+        return param.getMinConfidenceLevel();
+    }
+
+    int getMinimumRiskLevel() {
+        return param.getMinRiskLevel();
+    }
+
+    void setOnlyInScope(boolean v) {
+        param.setOnlyInScope(v);
+    }
+
+    void setMcpServerUrl(String v) {
+        param.setMcpServerUrl(v);
+    }
+
+    void setMinimumConfidenceLevel(int v) {
+        param.setMinConfidenceLevel(v);
+    }
+
+    void setMinimumRiskLevel(int v) {
+        param.setMinRiskLevel(v);
+    }
+
+    private String getMcpServerPath(String path) {
+        StringBuilder sb = new StringBuilder(getMcpServerUrl());
+        if (sb.charAt(sb.length() - 1) != '/') {
+            sb.append('/');
+        }
+        if (path.startsWith("/")) {
+            path = path.substring(1);
+        }
+        sb.append(path);
+        return sb.toString();
     }
 
     @Override
@@ -102,10 +142,16 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor implements 
     public void hook(ExtensionHook extensionHook) {
         super.hook(extensionHook);
 
+        extensionHook.addOptionsParamSet(param);
+
         ZAP.getEventBus().registerConsumer(this, AlertEventPublisher.getPublisher().getPublisherName(), AlertEventPublisher.ALERT_ADDED_EVENT);
         executor.scheduleWithFixedDelay(this, 60, 120, TimeUnit.SECONDS);
 
         extensionHook.addHttpSenderListener(this);
+
+        if (extensionHook.getHookView() != null) {
+            extensionHook.getHookView().addOptionPanel(new ShyHurricaneOptionsPanel(this));
+        }
     }
 
     @Override
@@ -129,11 +175,11 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor implements 
     public void eventReceived(Event event) {
         Map<String, String> map = event.getParameters();
         int confidence = Integer.parseInt(map.get(AlertEventPublisher.CONFIDENCE));
-        if (confidence < minimumConfidenceLevel) {
+        if (confidence < getMinimumConfidenceLevel()) {
             return;
         }
         int risk = Integer.parseInt(map.get(AlertEventPublisher.RISK));
-        if (risk < minimumRiskLevel) {
+        if (risk < getMinimumRiskLevel()) {
             return;
         }
         String fingerprint = alertFingerprint(event);
@@ -165,7 +211,7 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor implements 
             if (alert == null) {
                 continue;
             }
-            if (onlyInScope) {
+            if (isOnlyInScope()) {
                 if (alert.getMessage() != null && !alert.getMessage().isInScope()) {
                     continue;
                 }
@@ -232,7 +278,7 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor implements 
         data.put("target", target);
         data.put("title", title);
         data.put("markdown", markdown);
-        postData(mcpServerUrl + FINDINGS_PATH, data);
+        postData(getMcpServerPath(FINDINGS_PATH), data);
     }
 
     private String alertFingerprint(Event alertEvent) {
@@ -297,7 +343,7 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor implements 
 
     @Override
     public void onHttpResponseReceive(HttpMessage msg, int initiator, HttpSender sender) {
-        if (onlyInScope && !msg.isInScope()) {
+        if (isOnlyInScope() && !msg.isInScope()) {
             return;
         }
 
@@ -343,7 +389,7 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor implements 
     }
 
     private void postIndex(Map<String, Object> data) throws Exception {
-        postData(mcpServerUrl + INDEX_PATH, data);
+        postData(getMcpServerPath(INDEX_PATH), data);
     }
 
     private void postData(String urlStr, Map<String, Object> data) throws Exception {
