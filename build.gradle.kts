@@ -21,7 +21,7 @@ dependencies {
 }
 
 zapAddOn {
-    addOnName.set("ShyHurricane Forwarder")
+    addOnName.set("ShyHurricane")
     zapVersion.set("2.16.0")
     manifest {
         author.set("Patrick Double <github.com/double16>")

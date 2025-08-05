@@ -45,7 +45,7 @@ public class ShyHurricaneOptionsPanel extends AbstractParamPanel {
 
     public ShyHurricaneOptionsPanel(ExtensionShyHurricaneForwarder ext) {
         this.extension = ext;
-        setName("ShyHurricane Forwarder");           // tab title
+        setName("ShyHurricane");           // tab title
         setLayout(new GridBagLayout());
 
         GridBagConstraints gbc = new GridBagConstraints();

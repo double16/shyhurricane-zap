@@ -36,7 +36,7 @@ import org.zaproxy.zap.network.HttpSenderListener;
 @SuppressWarnings("unused")
 public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor implements EventConsumer, Runnable, HttpSenderListener {
 
-    private static final String NAME = "ShyHurricane Forwarder";
+    private static final String NAME = "ShyHurricane";
     private static final String INDEX_PATH = "/index";
     private static final String FINDINGS_PATH = "/findings";
 
