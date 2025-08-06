@@ -331,7 +331,7 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor implements 
     private Map<String, String> toKatanaHeaders(HttpHeader headers) {
         Map<String, String> map = new HashMap<>();
         for (HttpHeaderField header : headers.getHeaders()) {
-            String katanaHeaderName = header.getName().toLowerCase().replace('-', '_');
+            String katanaHeaderName = header.getName().toLowerCase();
             if (map.containsKey(katanaHeaderName)) {
                 map.put(katanaHeaderName, map.get(katanaHeaderName) + ";" + header.getValue());
             } else {
