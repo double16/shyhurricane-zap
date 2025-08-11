@@ -14,7 +14,7 @@ public class ShyHurricaneOptionsParam extends AbstractParam {
 
     private boolean onlyInScope = true;
     private String mcpServerUrl = "http://localhost:8000";
-    private int minConfidenceLevel = Alert.CONFIDENCE_MEDIUM;
+    private int minConfidenceLevel = Alert.CONFIDENCE_LOW;
     private int minRiskLevel = Alert.RISK_INFO;
 
     @Override
