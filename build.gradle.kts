@@ -1,7 +1,7 @@
 plugins {
     id("org.zaproxy.add-on") version "0.13.1"
-    id("com.diffplug.spotless") version "7.2.1"
-    id("com.github.ben-manes.versions") version "0.52.0"
+    id("com.diffplug.spotless") version "8.6.0"
+    id("com.github.ben-manes.versions") version "0.54.0"
     java
 }
 
@@ -16,7 +16,7 @@ repositories {
 
 dependencies {
     compileOnly("org.zaproxy:zap:2.16.1")
-    implementation(platform("com.fasterxml.jackson:jackson-bom:2.19.+" ))
+    implementation(platform("com.fasterxml.jackson:jackson-bom:2.22.+" ))
     implementation("com.fasterxml.jackson.core:jackson-databind")
 }
 

@@ -105,6 +105,22 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor implements 
         return param.getMinRiskLevel();
     }
 
+    boolean isInitiatorsAll() {
+        return param.isInitiatorsAll();
+    }
+
+    void setInitiatorsAll(boolean v) {
+        param.setInitiatorsAll(v);
+    }
+
+    String getInitiatorsSelectedCsv() {
+        return param.getInitiatorsSelectedCsv();
+    }
+
+    void setInitiatorsSelectedCsv(String csv) {
+        param.setInitiatorsSelectedCsv(csv);
+    }
+
     void setOnlyInScope(boolean v) {
         param.setOnlyInScope(v);
     }
@@ -343,6 +359,10 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor implements 
 
     @Override
     public void onHttpResponseReceive(HttpMessage msg, int initiator, HttpSender sender) {
+        // Filter by request initiator if configured
+        if (!param.isInitiatorsAll() && !param.isInitiatorSelected(initiator)) {
+            return;
+        }
         if (isOnlyInScope() && !msg.isInScope()) {
             return;
         }
