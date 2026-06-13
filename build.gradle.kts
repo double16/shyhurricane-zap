@@ -15,13 +15,13 @@ repositories {
 }
 
 dependencies {
-    compileOnly("org.zaproxy:zap:2.16.1")
+    compileOnly("org.zaproxy:zap:2.17.0")
     implementation(platform("com.fasterxml.jackson:jackson-bom:2.22.+" ))
     implementation("com.fasterxml.jackson.core:jackson-databind")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
     testImplementation("commons-configuration:commons-configuration:1.10")
-    testImplementation("org.zaproxy:zap:2.16.1")
+    testImplementation("org.zaproxy:zap:2.17.0")
 }
 
 zapAddOn {
