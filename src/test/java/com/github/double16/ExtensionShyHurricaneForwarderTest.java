@@ -37,12 +37,12 @@ class ExtensionShyHurricaneForwarderTest {
     @Test
     void onlyInScope_flagToggles() {
         // Inject a param stub that controls onlyInScope
-        setParam(ext, new ShyHurricaneOptionsParam() {
+        ext = new ExtensionShyHurricaneForwarder(new ShyHurricaneOptionsParam() {
             @Override public boolean isOnlyInScope() { return false; }
         });
         assertFalse(ext.isOnlyInScope());
 
-        setParam(ext, new ShyHurricaneOptionsParam() {
+        ext = new ExtensionShyHurricaneForwarder(new ShyHurricaneOptionsParam() {
             @Override public boolean isOnlyInScope() { return true; }
         });
         assertTrue(ext.isOnlyInScope());
@@ -50,13 +50,13 @@ class ExtensionShyHurricaneForwarderTest {
 
     @Test
     void getMcpServerPath_joinsWithSingleSlash() throws Exception {
-        setParam(ext, new ShyHurricaneOptionsParam() {
+        ext = new ExtensionShyHurricaneForwarder(new ShyHurricaneOptionsParam() {
             @Override public String getMcpServerUrl() { return "http://example.com"; }
         });
         String p1 = (String) invokePrivate(ext, "getMcpServerPath", new Class[]{String.class}, "/index");
         assertEquals("http://example.com/index", p1);
 
-        setParam(ext, new ShyHurricaneOptionsParam() {
+        ext = new ExtensionShyHurricaneForwarder(new ShyHurricaneOptionsParam() {
             @Override public String getMcpServerUrl() { return "http://example.com/"; }
         });
         String p2 = (String) invokePrivate(ext, "getMcpServerPath", new Class[]{String.class}, "index");
@@ -90,7 +90,7 @@ class ExtensionShyHurricaneForwarderTest {
     @Test
     void eventReceived_appliesThresholdsAndDeduplicates() throws Exception {
         // Configure thresholds via injected param
-        setParam(ext, new ShyHurricaneOptionsParam() {
+        ext = new ExtensionShyHurricaneForwarder(new ShyHurricaneOptionsParam() {
             @Override public int getMinConfidenceLevel() { return 2; }
             @Override public int getMinRiskLevel() { return 2; }
         });
@@ -147,16 +147,6 @@ class ExtensionShyHurricaneForwarderTest {
         Field f = target.getClass().getDeclaredField(name);
         f.setAccessible(true);
         return f.get(target);
-    }
-
-    private static void setParam(ExtensionShyHurricaneForwarder target, ShyHurricaneOptionsParam p) {
-        try {
-            Field f = target.getClass().getDeclaredField("param");
-            f.setAccessible(true);
-            f.set(target, p);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private static Event fakeEvent(Map<String, String> params) {

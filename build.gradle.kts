@@ -20,6 +20,7 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("commons-configuration:commons-configuration:1.10")
     testImplementation("org.zaproxy:zap:2.17.0")
 }

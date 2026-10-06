@@ -2,12 +2,13 @@ package com.github.double16;
 
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
-
+import java.net.URI;
 import java.net.URL;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -82,11 +83,16 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor implements 
      */
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
-    private final ShyHurricaneOptionsParam param = new ShyHurricaneOptionsParam();
+    private final ShyHurricaneOptionsParam param;
 
     @SuppressWarnings("unused")
     public ExtensionShyHurricaneForwarder() {
+        this(new ShyHurricaneOptionsParam());
+    }
+
+    ExtensionShyHurricaneForwarder(ShyHurricaneOptionsParam param) {
         super(NAME);
+        this.param = Objects.requireNonNull(param);
     }
 
     boolean isOnlyInScope() {
@@ -415,7 +421,7 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor implements 
     private void postData(String urlStr, Map<String, Object> data) throws Exception {
         String jsonBody = MAPPER.writeValueAsString(data);
 
-        URL url = new URL(urlStr);
+        URL url = URI.create(urlStr).toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
         conn.setRequestProperty("Content-Type", "application/json");

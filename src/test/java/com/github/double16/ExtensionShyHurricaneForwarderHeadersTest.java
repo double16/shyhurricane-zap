@@ -46,7 +46,7 @@ class ExtensionShyHurricaneForwarderHeadersTest {
     @Test
     void onHttpResponseReceive_skipsWhenInitiatorNotSelected() throws Exception {
         // Configure: only selected initiators are processed
-        setParam(ext, new ShyHurricaneOptionsParam() {
+        ext = new ExtensionShyHurricaneForwarder(new ShyHurricaneOptionsParam() {
             @Override public boolean isInitiatorsAll() { return false; }
             @Override public String getInitiatorsSelectedCsv() { return "1,2"; }
             @Override public boolean isInitiatorSelected(int id) { return id == 1 || id == 2; }
@@ -67,7 +67,7 @@ class ExtensionShyHurricaneForwarderHeadersTest {
     @Test
     void onHttpResponseReceive_skipsOnContentType() throws Exception {
         // All initiators allowed, not only in scope
-        setParam(ext, new ShyHurricaneOptionsParam() {
+        ext = new ExtensionShyHurricaneForwarder(new ShyHurricaneOptionsParam() {
             @Override public boolean isInitiatorsAll() { return true; }
             @Override public boolean isOnlyInScope() { return false; }
         });
@@ -82,15 +82,5 @@ class ExtensionShyHurricaneForwarderHeadersTest {
 
         // Should return early; just assert no exception is thrown
         ext.onHttpResponseReceive(msg, 0, null);
-    }
-
-    private static void setParam(ExtensionShyHurricaneForwarder target, ShyHurricaneOptionsParam p) {
-        try {
-            var f = target.getClass().getDeclaredField("param");
-            f.setAccessible(true);
-            f.set(target, p);
-        } catch (Exception e) {
-            throw new AssertionError(e);
-        }
     }
 }
