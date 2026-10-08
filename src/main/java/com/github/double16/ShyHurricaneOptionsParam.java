@@ -14,6 +14,8 @@ public class ShyHurricaneOptionsParam extends AbstractParam {
     private static final String KEY_INITIATORS_ALL = BASE_KEY + "initiators.all";
     private static final String KEY_INITIATORS_SELECTED = BASE_KEY + "initiators.selected"; // CSV of ints
 
+    private final boolean[] statusGroupsSelected = {true, false, false, false};
+
     private boolean onlyInScope = true;
     private String mcpServerUrl = "http://localhost:8000";
     private int minConfidenceLevel = Alert.CONFIDENCE_LOW;
@@ -23,12 +25,40 @@ public class ShyHurricaneOptionsParam extends AbstractParam {
 
     @Override
     protected void parse() {
+        for (int group = 2; group <= 5; group++) {
+            final String key = BASE_KEY + "statusCodes.group" + group + "xx";
+            final String legacyKey = BASE_KEY + "statusCodes." + group + "xx";
+            if (getConfig().containsKey(legacyKey)) {
+                if (!getConfig().containsKey(key)) {
+                    getConfig().setProperty(key, getConfig().getBoolean(legacyKey));
+                }
+                getConfig().clearProperty(legacyKey);
+            }
+            statusGroupsSelected[group - 2] = getConfig().getBoolean(key, group == 2);
+        }
         onlyInScope = getConfig().getBoolean(KEY_ONLY_IN_SCOPE, onlyInScope);
         mcpServerUrl = getConfig().getString(KEY_SERVER_URL, mcpServerUrl);
         minConfidenceLevel = getConfig().getInt(KEY_MIN_CONF, minConfidenceLevel);
         minRiskLevel = getConfig().getInt(KEY_MIN_RISK, minRiskLevel);
         initiatorsAll = getConfig().getBoolean(KEY_INITIATORS_ALL, initiatorsAll);
         initiatorsSelectedCsv = getConfig().getString(KEY_INITIATORS_SELECTED, initiatorsSelectedCsv);
+    }
+
+    public boolean isStatusGroupSelected(int group) {
+        return group >= 2 && group <= 5 && statusGroupsSelected[group - 2];
+    }
+
+    public void setStatusGroupSelected(int group, boolean selected) {
+        if (group < 2 || group > 5) {
+            throw new IllegalArgumentException("Status group must be between 2 and 5");
+        }
+        statusGroupsSelected[group - 2] = selected;
+        getConfig().setProperty(BASE_KEY + "statusCodes.group" + group + "xx", selected);
+    }
+
+    public boolean isStatusCodeSelected(int statusCode) {
+        return statusCode >= 200 && statusCode <= 599
+                && isStatusGroupSelected(statusCode / 100);
     }
 
     public boolean isOnlyInScope() {

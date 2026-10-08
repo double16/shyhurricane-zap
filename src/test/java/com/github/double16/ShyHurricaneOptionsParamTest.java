@@ -3,6 +3,8 @@ package com.github.double16;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.lang.reflect.Method;
+import java.io.StringReader;
+import java.io.StringWriter;
 import org.apache.commons.configuration.FileConfiguration;
 import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.commons.configuration.XMLConfiguration;
@@ -102,6 +104,124 @@ class ShyHurricaneOptionsParamTest {
         assertEquals("7,8,9", p.getInitiatorsSelectedCsv());
         assertTrue(p.isInitiatorSelected(8));
         assertFalse(p.isInitiatorSelected(10));
+    }
+
+    @Test
+    void statusDefaultsAndPersistence() {
+        ShyHurricaneOptionsParam param = new ShyHurricaneOptionsParam();
+        for (int group = 2; group <= 5; group++) {
+            assertEquals(group == 2, param.isStatusGroupSelected(group));
+        }
+        XMLConfiguration config = new XMLConfiguration();
+        param.load(config);
+        for (int group = 2; group <= 5; group++) {
+            assertEquals(group == 2, param.isStatusGroupSelected(group));
+            param.setStatusGroupSelected(group, group != 2);
+            assertEquals(group != 2, config.getBoolean("shyhurricane.statusCodes.group" + group + "xx"));
+        }
+        ShyHurricaneOptionsParam reloaded = new ShyHurricaneOptionsParam();
+        reloaded.load(config);
+        for (int group = 2; group <= 5; group++) {
+            assertEquals(group != 2, reloaded.isStatusGroupSelected(group));
+        }
+    }
+
+    @Test
+    void statusSettingsSurviveXmlSaveAndReload() throws Exception {
+        XMLConfiguration config = new XMLConfiguration();
+        ShyHurricaneOptionsParam param = new ShyHurricaneOptionsParam();
+        param.load(config);
+        for (int group = 2; group <= 5; group++) {
+            param.setStatusGroupSelected(group, group != 2);
+        }
+        StringWriter xml = new StringWriter();
+        config.save(xml);
+        XMLConfiguration saved = new XMLConfiguration();
+        saved.load(new StringReader(xml.toString()));
+        ShyHurricaneOptionsParam reloaded = new ShyHurricaneOptionsParam();
+        reloaded.load(saved);
+        for (int group = 2; group <= 5; group++) {
+            assertEquals(group != 2, reloaded.isStatusGroupSelected(group));
+        }
+    }
+
+    @Test
+    void legacyStatusSettingsAreMigratedAndCanBeSaved() throws Exception {
+        XMLConfiguration config = new XMLConfiguration();
+        for (int group = 2; group <= 5; group++) {
+            config.setProperty("shyhurricane.statusCodes." + group + "xx", group != 2);
+        }
+        // A new key takes precedence if both formats exist.
+        config.setProperty("shyhurricane.statusCodes.group3xx", false);
+        ShyHurricaneOptionsParam param = new ShyHurricaneOptionsParam();
+        param.load(config);
+        for (int group = 2; group <= 5; group++) {
+            assertEquals(group >= 4, param.isStatusGroupSelected(group));
+            assertFalse(config.containsKey("shyhurricane.statusCodes." + group + "xx"));
+        }
+        StringWriter xml = new StringWriter();
+        config.save(xml);
+        XMLConfiguration saved = new XMLConfiguration();
+        saved.load(new StringReader(xml.toString()));
+        param.load(saved);
+        for (int group = 2; group <= 5; group++) {
+            assertEquals(group >= 4, param.isStatusGroupSelected(group));
+        }
+    }
+
+    @Test
+    void invalidStatusGroupsAreRejectedWithoutChangingSettings() {
+        ShyHurricaneOptionsParam param = new ShyHurricaneOptionsParam();
+        initializeConfig(param);
+        for (int group : new int[]{1, 6}) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> param.setStatusGroupSelected(group, true));
+            assertFalse(param.isStatusGroupSelected(group));
+        }
+        assertTrue(param.isStatusGroupSelected(2));
+    }
+
+    @Test
+    void generalSettingsArePersisted() {
+        XMLConfiguration config = new XMLConfiguration();
+        ShyHurricaneOptionsParam param = new ShyHurricaneOptionsParam();
+        param.load(config);
+        param.setOnlyInScope(false);
+        param.setMcpServerUrl("https://example.test");
+        param.setMinConfidenceLevel(Alert.CONFIDENCE_HIGH);
+        param.setMinRiskLevel(Alert.RISK_HIGH);
+        ShyHurricaneOptionsParam reloaded = new ShyHurricaneOptionsParam();
+        reloaded.load(config);
+        assertFalse(reloaded.isOnlyInScope());
+        assertEquals("https://example.test", reloaded.getMcpServerUrl());
+        assertEquals(Alert.CONFIDENCE_HIGH, reloaded.getMinConfidenceLevel());
+        assertEquals(Alert.RISK_HIGH, reloaded.getMinRiskLevel());
+    }
+
+    @Test
+    void statusBoundariesAndEmptySelection() {
+        ShyHurricaneOptionsParam param = new ShyHurricaneOptionsParam();
+        initializeConfig(param);
+        for (int selected = 2; selected <= 5; selected++) {
+            for (int group = 2; group <= 5; group++) {
+                param.setStatusGroupSelected(group, group == selected);
+            }
+            for (int code : new int[]{0, 100, 101, 199, 200, 299, 300, 399, 400, 499, 500, 599, 600}) {
+                assertEquals(code >= 200 && code <= 599 && code / 100 == selected,
+                        param.isStatusCodeSelected(code), "status " + code);
+            }
+        }
+        for (int group = 2; group <= 5; group++) {
+            param.setStatusGroupSelected(group, true);
+        }
+        assertFalse(param.isStatusCodeSelected(199));
+        assertFalse(param.isStatusCodeSelected(600));
+        for (int group = 2; group <= 5; group++) {
+            param.setStatusGroupSelected(group, false);
+        }
+        for (int code : new int[]{200, 301, 404, 503}) {
+            assertFalse(param.isStatusCodeSelected(code));
+        }
     }
 
     private static void initializeConfig(ShyHurricaneOptionsParam param) {

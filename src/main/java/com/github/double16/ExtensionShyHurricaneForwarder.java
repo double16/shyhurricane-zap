@@ -95,6 +95,14 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor implements 
         this.param = Objects.requireNonNull(param);
     }
 
+    boolean isStatusGroupSelected(int group) {
+        return param.isStatusGroupSelected(group);
+    }
+
+    void setStatusGroupSelected(int group, boolean selected) {
+        param.setStatusGroupSelected(group, selected);
+    }
+
     boolean isOnlyInScope() {
         return param.isOnlyInScope();
     }
@@ -375,6 +383,10 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor implements 
 
         HttpRequestHeader req_hdr = msg.getRequestHeader();
         HttpResponseHeader res_hdr = msg.getResponseHeader();
+
+        if (!param.isStatusCodeSelected(res_hdr.getStatusCode())) {
+            return;
+        }
 
         String contentType = res_hdr.getNormalisedContentTypeValue();
         if (shouldSkip(contentType)) {
