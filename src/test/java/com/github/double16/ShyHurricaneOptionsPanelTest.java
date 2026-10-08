@@ -162,6 +162,30 @@ class ShyHurricaneOptionsPanelTest {
         assertEquals("1,2,3", csv);
     }
 
+    @Test
+    void statusControls_loadSelectAllEditAndSave() throws Exception {
+        panel.initParam(null);
+        @SuppressWarnings("unchecked")
+        Map<Integer, JCheckBox> boxes = (Map<Integer, JCheckBox>) getField(panel, "statusBoxes");
+        assertEquals(4, boxes.size());
+        for (int group = 2; group <= 5; group++) {
+            assertEquals(group == 2, boxes.get(group).isSelected());
+        }
+        ((JButton) getField(panel, "btnSelectAllStatuses")).doClick();
+        assertTrue(boxes.values().stream().allMatch(JCheckBox::isSelected));
+        assertTrue(boxes.values().stream().allMatch(JCheckBox::isEnabled));
+        boxes.get(3).doClick();
+        panel.saveParam(null);
+        panel.initParam(null);
+        for (int group = 2; group <= 5; group++) {
+            assertEquals(group != 3, boxes.get(group).isSelected());
+        }
+        boxes.values().forEach(box -> box.setSelected(false));
+        panel.saveParam(null);
+        panel.initParam(null);
+        assertTrue(boxes.values().stream().noneMatch(JCheckBox::isSelected));
+    }
+
     // ---- helpers ----
     private static Object getField(Object target, String name) throws NoSuchFieldException, IllegalAccessException {
         Field f = target.getClass().getDeclaredField(name);
@@ -183,6 +207,10 @@ class ShyHurricaneOptionsPanelTest {
         int minRisk = org.parosproxy.paros.core.scanner.Alert.RISK_INFO;
         boolean initiatorsAll;
         String initiatorsCsv = "";
+        boolean[] statuses = {true, false, false, false};
+
+        @Override public boolean isStatusGroupSelected(int group) { return statuses[group - 2]; }
+        @Override public void setStatusGroupSelected(int group, boolean selected) { statuses[group - 2] = selected; }
 
         @Override public boolean isOnlyInScope() { return onlyInScope; }
         @Override public void setOnlyInScope(boolean v) { onlyInScope = v; }

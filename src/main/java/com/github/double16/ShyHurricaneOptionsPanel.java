@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -48,6 +49,9 @@ public class ShyHurricaneOptionsPanel extends AbstractParamPanel {
             Alert.RISK_INFO, Alert.RISK_LOW, Alert.RISK_MEDIUM, Alert.RISK_HIGH
     };
     private final JComboBox<String> cmbRisk = new JComboBox<>(RISK_LABELS);
+
+    private final Map<Integer, JCheckBox> statusBoxes = new LinkedHashMap<>();
+    private final JButton btnSelectAllStatuses = new JButton("Select all statuses");
 
     // Initiators filtering UI
     private final JCheckBox chkAllInitiators = new JCheckBox("All request initiators");
@@ -90,6 +94,21 @@ public class ShyHurricaneOptionsPanel extends AbstractParamPanel {
         add(new JLabel("Minimum risk:"), gbc);
         gbc.gridx = 1;
         add(cmbRisk, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy++;
+        add(new JLabel("Forward HTTP statuses:"), gbc);
+        JPanel statusesPanel = new JPanel();
+        for (int group = 2; group <= 5; group++) {
+            JCheckBox box = new JCheckBox(group + "xx", group == 2);
+            statusBoxes.put(group, box);
+            statusesPanel.add(box);
+        }
+        statusesPanel.add(btnSelectAllStatuses);
+        btnSelectAllStatuses.addActionListener(
+                e -> statusBoxes.values().forEach(box -> box.setSelected(true)));
+        gbc.gridx = 1;
+        add(statusesPanel, gbc);
 
         // Divider / label for initiators
         gbc.gridx = 0;
@@ -134,6 +153,9 @@ public class ShyHurricaneOptionsPanel extends AbstractParamPanel {
         cmbRisk.setSelectedIndex(
                 indexOf(RISK_VALUES, extension.getMinimumRiskLevel()));
 
+        statusBoxes.forEach((group, box) ->
+                box.setSelected(extension.isStatusGroupSelected(group)));
+
         // Initiators
         chkAllInitiators.setSelected(extension.isInitiatorsAll());
         var selectedCsv = extension.getInitiatorsSelectedCsv();
@@ -151,6 +173,9 @@ public class ShyHurricaneOptionsPanel extends AbstractParamPanel {
                 CONFIDENCE_VALUES[cmbConfidence.getSelectedIndex()]);
         extension.setMinimumRiskLevel(
                 RISK_VALUES[cmbRisk.getSelectedIndex()]);
+
+        statusBoxes.forEach((group, box) ->
+                extension.setStatusGroupSelected(group, box.isSelected()));
 
         // Initiators
         extension.setInitiatorsAll(chkAllInitiators.isSelected());
