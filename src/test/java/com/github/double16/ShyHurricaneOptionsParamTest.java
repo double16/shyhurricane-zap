@@ -2,15 +2,16 @@ package com.github.double16;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.lang.reflect.Method;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.lang.reflect.Method;
 import org.apache.commons.configuration.FileConfiguration;
 import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.parosproxy.paros.core.scanner.Alert;
+import org.parosproxy.paros.network.HttpSender;
 
 class ShyHurricaneOptionsParamTest {
 
@@ -23,11 +24,49 @@ class ShyHurricaneOptionsParamTest {
         assertEquals("http://localhost:8000", p.getMcpServerUrl());
         assertEquals(Alert.CONFIDENCE_LOW, p.getMinConfidenceLevel());
         assertEquals(Alert.RISK_INFO, p.getMinRiskLevel());
-        assertTrue(p.isInitiatorsAll());
-        assertEquals("", p.getInitiatorsSelectedCsv());
-        // With initiatorsAll=true any id is considered selected
-        assertTrue(p.isInitiatorSelected(0));
-        assertTrue(p.isInitiatorSelected(123));
+        assertDefaultInitiators(p);
+        initializeConfig(p);
+        assertDefaultInitiators(p);
+    }
+
+    private static void assertDefaultInitiators(ShyHurricaneOptionsParam param) {
+        assertFalse(param.isInitiatorsAll());
+        assertEquals("1,3,10,18", param.getInitiatorsSelectedCsv());
+        for (int id = 0; id <= 19; id++) {
+            assertEquals(
+                    id == HttpSender.PROXY_INITIATOR
+                            || id == HttpSender.SPIDER_INITIATOR
+                            || id == HttpSender.AJAX_SPIDER_INITIATOR
+                            || id == HttpSender.CLIENT_SPIDER_INITIATOR,
+                    param.isInitiatorSelected(id),
+                    "initiator " + id);
+        }
+    }
+
+    @Test
+    void savedInitiatorSettingsOverrideDefaults() {
+        final XMLConfiguration config = new XMLConfiguration();
+        config.setDelimiterParsingDisabled(true);
+        final ShyHurricaneOptionsParam param = new ShyHurricaneOptionsParam();
+        param.load(config);
+        param.setInitiatorsAll(true);
+        param.setInitiatorsSelectedCsv("");
+        final ShyHurricaneOptionsParam reloaded = new ShyHurricaneOptionsParam();
+        reloaded.load(config);
+        assertTrue(reloaded.isInitiatorsAll());
+        assertTrue(reloaded.isInitiatorSelected(123));
+        reloaded.setInitiatorsAll(false);
+        final ShyHurricaneOptionsParam empty = new ShyHurricaneOptionsParam();
+        empty.load(config);
+        assertEquals("", empty.getInitiatorsSelectedCsv());
+        assertFalse(empty.isInitiatorSelected(HttpSender.PROXY_INITIATOR));
+        param.setInitiatorsAll(false);
+        param.setInitiatorsSelectedCsv("2,6");
+        reloaded.load(config);
+        assertFalse(reloaded.isInitiatorsAll());
+        assertTrue(reloaded.isInitiatorSelected(HttpSender.ACTIVE_SCANNER_INITIATOR));
+        assertTrue(reloaded.isInitiatorSelected(HttpSender.MANUAL_REQUEST_INITIATOR));
+        assertFalse(reloaded.isInitiatorSelected(HttpSender.SPIDER_INITIATOR));
     }
 
     @Test
@@ -74,13 +113,15 @@ class ShyHurricaneOptionsParamTest {
         if (cfg instanceof XMLConfiguration) {
             ((XMLConfiguration) cfg).setDelimiterParsingDisabled(true);
         }
-        Method loadM = Class.forName("org.parosproxy.paros.common.AbstractParam")
-                .getMethod("load", FileConfiguration.class);
+        Method loadM =
+                Class.forName("org.parosproxy.paros.common.AbstractParam")
+                        .getMethod("load", FileConfiguration.class);
         loadM.invoke(p, cfg);
 
         // Access the protected configuration via reflection to seed values
-        Method getConfigM = Class.forName("org.parosproxy.paros.common.AbstractParam")
-                .getDeclaredMethod("getConfig");
+        Method getConfigM =
+                Class.forName("org.parosproxy.paros.common.AbstractParam")
+                        .getDeclaredMethod("getConfig");
         getConfigM.setAccessible(true);
         Object cfgObj = getConfigM.invoke(p);
         assertInstanceOf(HierarchicalConfiguration.class, cfgObj);
@@ -117,7 +158,8 @@ class ShyHurricaneOptionsParamTest {
         for (int group = 2; group <= 5; group++) {
             assertEquals(group == 2, param.isStatusGroupSelected(group));
             param.setStatusGroupSelected(group, group != 2);
-            assertEquals(group != 2, config.getBoolean("shyhurricane.statusCodes.group" + group + "xx"));
+            assertEquals(
+                    group != 2, config.getBoolean("shyhurricane.statusCodes.group" + group + "xx"));
         }
         ShyHurricaneOptionsParam reloaded = new ShyHurricaneOptionsParam();
         reloaded.load(config);
@@ -173,8 +215,9 @@ class ShyHurricaneOptionsParamTest {
     void invalidStatusGroupsAreRejectedWithoutChangingSettings() {
         ShyHurricaneOptionsParam param = new ShyHurricaneOptionsParam();
         initializeConfig(param);
-        for (int group : new int[]{1, 6}) {
-            assertThrows(IllegalArgumentException.class,
+        for (int group : new int[] {1, 6}) {
+            assertThrows(
+                    IllegalArgumentException.class,
                     () -> param.setStatusGroupSelected(group, true));
             assertFalse(param.isStatusGroupSelected(group));
         }
@@ -206,9 +249,12 @@ class ShyHurricaneOptionsParamTest {
             for (int group = 2; group <= 5; group++) {
                 param.setStatusGroupSelected(group, group == selected);
             }
-            for (int code : new int[]{0, 100, 101, 199, 200, 299, 300, 399, 400, 499, 500, 599, 600}) {
-                assertEquals(code >= 200 && code <= 599 && code / 100 == selected,
-                        param.isStatusCodeSelected(code), "status " + code);
+            for (int code :
+                    new int[] {0, 100, 101, 199, 200, 299, 300, 399, 400, 499, 500, 599, 600}) {
+                assertEquals(
+                        code >= 200 && code <= 599 && code / 100 == selected,
+                        param.isStatusCodeSelected(code),
+                        "status " + code);
             }
         }
         for (int group = 2; group <= 5; group++) {
@@ -219,7 +265,7 @@ class ShyHurricaneOptionsParamTest {
         for (int group = 2; group <= 5; group++) {
             param.setStatusGroupSelected(group, false);
         }
-        for (int code : new int[]{200, 301, 404, 503}) {
+        for (int code : new int[] {200, 301, 404, 503}) {
             assertFalse(param.isStatusCodeSelected(code));
         }
     }
@@ -227,8 +273,9 @@ class ShyHurricaneOptionsParamTest {
     private static void initializeConfig(ShyHurricaneOptionsParam param) {
         try {
             FileConfiguration cfg = createConfigInstance();
-            Method loadM = Class.forName("org.parosproxy.paros.common.AbstractParam")
-                    .getMethod("load", FileConfiguration.class);
+            Method loadM =
+                    Class.forName("org.parosproxy.paros.common.AbstractParam")
+                            .getMethod("load", FileConfiguration.class);
             loadM.invoke(param, cfg);
         } catch (Exception e) {
             throw new AssertionError("Failed to initialize configuration", e);

@@ -1,6 +1,17 @@
 ShyHurricane-ZAP Changelog
 ==========================
 
+1.2.0
+----------
+
+## Features
+
+- Add **Send to ShyHurricane** context menus for alerts, Sites, History, Request/Response viewers, and compatible HTTP results views, with single and multiple selections and recursive tree groups.
+
+## Fixes
+
+- Default request initiators to Proxy and all spider initiators (Spider, AJAX Spider, and Client Spider), preserving existing saved selections.
+
 1.1.0
 -----
 
