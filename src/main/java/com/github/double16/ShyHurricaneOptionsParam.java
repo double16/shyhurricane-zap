@@ -2,6 +2,7 @@ package com.github.double16;
 
 import org.parosproxy.paros.common.AbstractParam;
 import org.parosproxy.paros.core.scanner.Alert;
+import org.parosproxy.paros.network.HttpSender;
 
 @SuppressWarnings("serial")
 public class ShyHurricaneOptionsParam extends AbstractParam {
@@ -12,7 +13,8 @@ public class ShyHurricaneOptionsParam extends AbstractParam {
     private static final String KEY_MIN_CONF = BASE_KEY + "minConfidence";
     private static final String KEY_MIN_RISK = BASE_KEY + "minRisk";
     private static final String KEY_INITIATORS_ALL = BASE_KEY + "initiators.all";
-    private static final String KEY_INITIATORS_SELECTED = BASE_KEY + "initiators.selected"; // CSV of ints
+    private static final String KEY_INITIATORS_SELECTED =
+            BASE_KEY + "initiators.selected"; // CSV of ints
 
     private final boolean[] statusGroupsSelected = {true, false, false, false};
 
@@ -20,8 +22,15 @@ public class ShyHurricaneOptionsParam extends AbstractParam {
     private String mcpServerUrl = "http://localhost:8000";
     private int minConfidenceLevel = Alert.CONFIDENCE_LOW;
     private int minRiskLevel = Alert.RISK_INFO;
-    private boolean initiatorsAll = true;
-    private String initiatorsSelectedCsv = ""; // persisted as CSV
+    private boolean initiatorsAll = false;
+    private String initiatorsSelectedCsv =
+            HttpSender.PROXY_INITIATOR
+                    + ","
+                    + HttpSender.SPIDER_INITIATOR
+                    + ","
+                    + HttpSender.AJAX_SPIDER_INITIATOR
+                    + ","
+                    + HttpSender.CLIENT_SPIDER_INITIATOR; // persisted as CSV
 
     @Override
     protected void parse() {
@@ -41,7 +50,8 @@ public class ShyHurricaneOptionsParam extends AbstractParam {
         minConfidenceLevel = getConfig().getInt(KEY_MIN_CONF, minConfidenceLevel);
         minRiskLevel = getConfig().getInt(KEY_MIN_RISK, minRiskLevel);
         initiatorsAll = getConfig().getBoolean(KEY_INITIATORS_ALL, initiatorsAll);
-        initiatorsSelectedCsv = getConfig().getString(KEY_INITIATORS_SELECTED, initiatorsSelectedCsv);
+        initiatorsSelectedCsv =
+                getConfig().getString(KEY_INITIATORS_SELECTED, initiatorsSelectedCsv);
     }
 
     public boolean isStatusGroupSelected(int group) {
@@ -57,8 +67,7 @@ public class ShyHurricaneOptionsParam extends AbstractParam {
     }
 
     public boolean isStatusCodeSelected(int statusCode) {
-        return statusCode >= 200 && statusCode <= 599
-                && isStatusGroupSelected(statusCode / 100);
+        return statusCode >= 200 && statusCode <= 599 && isStatusGroupSelected(statusCode / 100);
     }
 
     public boolean isOnlyInScope() {
@@ -106,24 +115,18 @@ public class ShyHurricaneOptionsParam extends AbstractParam {
         getConfig().setProperty(KEY_INITIATORS_ALL, v);
     }
 
-    /**
-     * Returns a CSV of selected initiator ids (persisted format).
-     */
+    /** Returns a CSV of selected initiator ids (persisted format). */
     public String getInitiatorsSelectedCsv() {
         return initiatorsSelectedCsv;
     }
 
-    /**
-     * Set by CSV string (persisted format).
-     */
+    /** Set by CSV string (persisted format). */
     public void setInitiatorsSelectedCsv(String csv) {
         initiatorsSelectedCsv = csv != null ? csv : "";
         getConfig().setProperty(KEY_INITIATORS_SELECTED, initiatorsSelectedCsv);
     }
 
-    /**
-     * Utility: check if a given initiator id is in the selected list.
-     */
+    /** Utility: check if a given initiator id is in the selected list. */
     public boolean isInitiatorSelected(int initiator) {
         if (initiatorsAll) return true;
         for (String s : initiatorsSelectedCsv.split(",")) {

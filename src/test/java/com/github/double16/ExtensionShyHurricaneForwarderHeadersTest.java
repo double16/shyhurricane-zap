@@ -1,21 +1,20 @@
 package com.github.double16;
 
+import static org.junit.jupiter.api.Assertions.*;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpServer;
+import java.lang.reflect.Method;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import org.apache.commons.configuration.XMLConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.parosproxy.paros.network.HttpMessage;
 import org.parosproxy.paros.network.HttpRequestHeader;
 import org.parosproxy.paros.network.HttpResponseHeader;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sun.net.httpserver.HttpServer;
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.commons.configuration.XMLConfiguration;
-import java.lang.reflect.Method;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class ExtensionShyHurricaneForwarderHeadersTest {
 
@@ -30,21 +29,24 @@ class ExtensionShyHurricaneForwarderHeadersTest {
     void onHttpResponseReceive_postsOnlySelectedStatuses() throws Exception {
         List<Integer> received = java.util.Collections.synchronizedList(new ArrayList<>());
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/index", exchange -> {
-            try {
-                assertEquals("POST", exchange.getRequestMethod());
-                var payload = new ObjectMapper().readTree(exchange.getRequestBody());
-                received.add(payload.get("response").get("status_code").asInt());
-                exchange.sendResponseHeaders(204, -1);
-            } finally {
-                exchange.close();
-            }
-        });
+        server.createContext(
+                "/index",
+                exchange -> {
+                    try {
+                        assertEquals("POST", exchange.getRequestMethod());
+                        var payload = new ObjectMapper().readTree(exchange.getRequestBody());
+                        received.add(payload.get("response").get("status_code").asInt());
+                        exchange.sendResponseHeaders(204, -1);
+                    } finally {
+                        exchange.close();
+                    }
+                });
         server.start();
         try {
             ShyHurricaneOptionsParam param = new ShyHurricaneOptionsParam();
             param.load(new XMLConfiguration());
             param.setOnlyInScope(false);
+            param.setInitiatorsAll(true);
             param.setMcpServerUrl("http://127.0.0.1:" + server.getAddress().getPort());
             ext = new ExtensionShyHurricaneForwarder(param);
             int[] codes = {100, 101, 199, 200, 299, 300, 399, 400, 499, 500, 599, 600};
@@ -91,15 +93,17 @@ class ExtensionShyHurricaneForwarderHeadersTest {
     @Test
     void toKatanaHeaders_lowercasesAndMergesDuplicates() throws Exception {
         // Build a request header with duplicate header names and mixed case
-        String raw = "GET http://example.com/ HTTP/1.1\r\n" +
-                "X-FOO: a\r\n" +
-                "x-foo: b\r\n" +
-                "Content-Type: Text/Plain\r\n" +
-                "\r\n";
+        String raw =
+                "GET http://example.com/ HTTP/1.1\r\n"
+                        + "X-FOO: a\r\n"
+                        + "x-foo: b\r\n"
+                        + "Content-Type: Text/Plain\r\n"
+                        + "\r\n";
         HttpRequestHeader req = new HttpRequestHeader(raw);
 
-        Method m = ExtensionShyHurricaneForwarder.class
-                .getDeclaredMethod("toKatanaHeaders", org.parosproxy.paros.network.HttpHeader.class);
+        Method m =
+                ExtensionShyHurricaneForwarder.class.getDeclaredMethod(
+                        "toKatanaHeaders", org.parosproxy.paros.network.HttpHeader.class);
         m.setAccessible(true);
         Map<String, String> kat = (Map<String, String>) m.invoke(ext, req);
 
@@ -113,12 +117,29 @@ class ExtensionShyHurricaneForwarderHeadersTest {
     @Test
     void onHttpResponseReceive_skipsWhenInitiatorNotSelected() throws Exception {
         // Configure: only selected initiators are processed
-        ext = new ExtensionShyHurricaneForwarder(new ShyHurricaneOptionsParam() {
-            @Override public boolean isInitiatorsAll() { return false; }
-            @Override public String getInitiatorsSelectedCsv() { return "1,2"; }
-            @Override public boolean isInitiatorSelected(int id) { return id == 1 || id == 2; }
-            @Override public boolean isOnlyInScope() { return false; }
-        });
+        ext =
+                new ExtensionShyHurricaneForwarder(
+                        new ShyHurricaneOptionsParam() {
+                            @Override
+                            public boolean isInitiatorsAll() {
+                                return false;
+                            }
+
+                            @Override
+                            public String getInitiatorsSelectedCsv() {
+                                return "1,2";
+                            }
+
+                            @Override
+                            public boolean isInitiatorSelected(int id) {
+                                return id == 1 || id == 2;
+                            }
+
+                            @Override
+                            public boolean isOnlyInScope() {
+                                return false;
+                            }
+                        });
 
         HttpMessage msg = new HttpMessage();
         msg.setRequestHeader(new HttpRequestHeader("GET http://example.com/ HTTP/1.1\r\n\r\n"));
@@ -134,10 +155,19 @@ class ExtensionShyHurricaneForwarderHeadersTest {
     @Test
     void onHttpResponseReceive_skipsOnContentType() throws Exception {
         // All initiators allowed, not only in scope
-        ext = new ExtensionShyHurricaneForwarder(new ShyHurricaneOptionsParam() {
-            @Override public boolean isInitiatorsAll() { return true; }
-            @Override public boolean isOnlyInScope() { return false; }
-        });
+        ext =
+                new ExtensionShyHurricaneForwarder(
+                        new ShyHurricaneOptionsParam() {
+                            @Override
+                            public boolean isInitiatorsAll() {
+                                return true;
+                            }
+
+                            @Override
+                            public boolean isOnlyInScope() {
+                                return false;
+                            }
+                        });
 
         HttpMessage msg = new HttpMessage();
         msg.setRequestHeader(new HttpRequestHeader("GET http://example.com/ HTTP/1.1\r\n\r\n"));
