@@ -231,6 +231,87 @@ class ExtensionShyHurricaneForwarderLifecycleTest {
         }
     }
 
+    @Test
+    void enrichedFindingsKeepDistinctInstancesAndNeverRetryFailures() throws Exception {
+        try (final var support = new ForwardingTestSupport()) {
+            final ExtensionLoader loader = mock(ExtensionLoader.class);
+            final ExtensionAlert alerts = mock(ExtensionAlert.class);
+            when(loader.getExtension(ExtensionAlert.NAME)).thenReturn(alerts);
+            Control.initSingletonForTesting(null, loader);
+            final var extension = configuredExtension();
+            extension.setMcpServerUrl(support.url());
+            extension.setOnlyInScope(false);
+            extension.setMinimumRiskLevel(0);
+            extension.setMinimumConfidenceLevel(0);
+            final var findings = new java.util.ArrayList<Alert>();
+            for (int id = 1; id <= 4; id++) {
+                final var finding = alert(id, message());
+                finding.setUri("http://example.com/a?q=" + (id == 2 ? "two%2F+" : "one%2F+"));
+                finding.setParam(id == 3 ? "other" : "q");
+                if (id == 4) finding.getMessage().getRequestHeader().setMethod("GET");
+                findings.add(finding);
+            }
+            when(alerts.getAllAlerts()).thenReturn(findings);
+            try {
+                support.findingsStatus = 201;
+                for (final var finding : findings) {
+                    final Map<String, String> parameters =
+                            new HashMap<>(event(finding.getAlertId(), 0, 0).getParameters());
+                    parameters.put(AlertEventPublisher.PLUGIN_ID, "123");
+                    parameters.put(AlertEventPublisher.NAME, "Example finding");
+                    parameters.put(AlertEventPublisher.URI, finding.getUri());
+                    parameters.put(AlertEventPublisher.PARAM, finding.getParam());
+                    final Event event = new Event(null, "test", null, parameters);
+                    extension.eventReceived(event);
+                    extension.eventReceived(event);
+                }
+                extension.run();
+                assertEquals(4, support.deliveries.size());
+                for (final var finding : findings) {
+                    final var delivered = support.deliveries.remove().body();
+                    assertEquals(finding.getUri(), delivered.path("target").asText());
+                    assertEquals(
+                            Integer.toString(finding.getAlertId()),
+                            delivered.path("metadata").path("source_finding_id").asText());
+                    assertEquals(
+                            finding.getMessage().getRequestHeader().getMethod(),
+                            delivered.path("metadata").path("affected_method").asText());
+                }
+                for (final int status : new int[] {201, 400, 500}) {
+                    support.findingsStatus = status;
+                    support.sender.sendAlerts(List.of(findings.get(0)));
+                    assertEquals(status != 201, support.completed().warning());
+                    assertEquals(2, support.deliveries.size());
+                    assertEquals(
+                            "zap",
+                            support.deliveries
+                                    .remove()
+                                    .body()
+                                    .path("metadata")
+                                    .path("source")
+                                    .asText());
+                    support.deliveries.clear();
+                    extension.eventReceived(event(1, status, 0));
+                    extension.run();
+                    extension.run();
+                    extension.eventReceived(event(1, status, 0));
+                    extension.run();
+                    assertEquals(1, support.deliveries.size());
+                    support.deliveries.clear();
+                }
+                support.server.stop(0);
+                extension.eventReceived(event(2, 1, 0));
+                extension.run();
+                extension.run();
+                support.sender.sendAlerts(List.of(findings.get(0)));
+                assertTrue(support.completed().text().contains("2 failures"));
+                assertTrue(support.deliveries.isEmpty());
+            } finally {
+                extension.unload();
+            }
+        }
+    }
+
     private static final class TestExtension extends ExtensionShyHurricaneForwarder {
         private ViewDelegate testView;
 

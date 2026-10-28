@@ -3,6 +3,7 @@ package com.github.double16;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
@@ -15,6 +16,9 @@ import org.parosproxy.paros.network.HttpResponseHeader;
 
 /** Payloads shared by automatic forwarding and explicit selections. */
 final class ForwardingPayloads {
+    private static final Map<Integer, String> CWE_CATEGORIES =
+            Map.of(79, "xss", 78, "injection", 89, "injection", 918, "ssrf");
+
     private ForwardingPayloads() {}
 
     static Map<String, Object> finding(final Alert alert) {
@@ -30,8 +34,8 @@ final class ForwardingPayloads {
                 Confidence: %s
                 """,
                         alert.getDescription(),
-                        Alert.MSG_RISK[alert.getRisk()],
-                        Alert.MSG_CONFIDENCE[alert.getConfidence()]));
+                        label(Alert.MSG_RISK, alert.getRisk()),
+                        label(Alert.MSG_CONFIDENCE, alert.getConfidence())));
         if (StringUtils.isNotBlank(alert.getOtherInfo())) {
             markdown.append(alert.getOtherInfo()).append("\n");
         }
@@ -76,7 +80,67 @@ final class ForwardingPayloads {
                 markdown.append("- ").append(alert.getReference().replace("\n", "\n- "));
             }
         }
-        return Map.of("target", alert.getUri(), "title", title, "markdown", markdown.toString());
+        return Map.of(
+                "target",
+                alert.getUri(),
+                "title",
+                title,
+                "markdown",
+                markdown.toString(),
+                "metadata",
+                metadata(alert));
+    }
+
+    private static String label(final String[] labels, final int value) {
+        return value >= 0 && value < labels.length ? labels[value] : null;
+    }
+
+    private static Map<String, Object> metadata(final Alert alert) {
+        final Map<String, Object> metadata = new HashMap<>();
+        metadata.put("source", "zap");
+        metadata.put("rule_id", Integer.toString(alert.getPluginId()));
+        if (alert.getAlertId() >= 0) {
+            metadata.put("source_finding_id", Integer.toString(alert.getAlertId()));
+        }
+        metadata.put(
+                "severity",
+                switch (alert.getRisk()) {
+                    case Alert.RISK_INFO -> "informational";
+                    case Alert.RISK_LOW -> "low";
+                    case Alert.RISK_MEDIUM -> "medium";
+                    case Alert.RISK_HIGH -> "high";
+                    default -> "unknown";
+                });
+        final boolean falsePositive = alert.getConfidence() == Alert.CONFIDENCE_FALSE_POSITIVE;
+        metadata.put("verification_status", falsePositive ? "false_positive" : "unverified");
+        if (!falsePositive) {
+            metadata.put(
+                    "confidence",
+                    switch (alert.getConfidence()) {
+                        case Alert.CONFIDENCE_LOW -> "low";
+                        case Alert.CONFIDENCE_MEDIUM -> "medium";
+                        case Alert.CONFIDENCE_HIGH, Alert.CONFIDENCE_USER_CONFIRMED -> "high";
+                        default -> "unknown";
+                    });
+        }
+        final String nativeSeverity = label(Alert.MSG_RISK, alert.getRisk());
+        final String nativeConfidence = label(Alert.MSG_CONFIDENCE, alert.getConfidence());
+        if (nativeSeverity != null) metadata.put("native_severity", nativeSeverity);
+        if (nativeConfidence != null) metadata.put("native_confidence", nativeConfidence);
+        final HttpMessage message = alert.getMessage();
+        if (message != null) {
+            final String method = message.getRequestHeader().getMethod();
+            if (StringUtils.isNotBlank(method)) {
+                metadata.put("affected_method", method.toUpperCase(Locale.ROOT));
+            }
+        }
+        if (alert.getCweId() > 0) metadata.put("cwe_ids", List.of("CWE-" + alert.getCweId()));
+        final String category = CWE_CATEGORIES.get(alert.getCweId());
+        if (category != null) metadata.put("vulnerability_types", List.of(category));
+        if (StringUtils.isNotBlank(alert.getParam())) {
+            metadata.put("parameter", Map.of("name", alert.getParam()));
+        }
+        return Map.copyOf(metadata);
     }
 
     static Map<String, String> headers(final HttpHeader headers) {

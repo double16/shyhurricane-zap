@@ -55,7 +55,8 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor
      * Maps alert fingerprint to time millis when recorded. Prevents repeating alerts. The time is
      * so we can clean up the map.
      */
-    private final ConcurrentHashMap<String, Long> processedFingerprints = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<AlertFingerprint, Long> processedFingerprints =
+            new ConcurrentHashMap<>();
 
     /** Holds the list of pending alerts to post. */
     private final ConcurrentLinkedQueue<String> pendingAlerts = new ConcurrentLinkedQueue<>();
@@ -216,11 +217,10 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor
         if (risk < getMinimumRiskLevel()) {
             return;
         }
-        String fingerprint = alertFingerprint(event);
-        if (processedFingerprints.containsKey(fingerprint)) {
+        final AlertFingerprint fingerprint = alertFingerprint(event);
+        if (processedFingerprints.putIfAbsent(fingerprint, System.currentTimeMillis()) != null) {
             return;
         }
-        processedFingerprints.putIfAbsent(fingerprint, System.currentTimeMillis());
         pendingAlerts.offer(map.get(AlertEventPublisher.ALERT_ID));
     }
 
@@ -262,15 +262,25 @@ public class ExtensionShyHurricaneForwarder extends ExtensionAdaptor
         }
     }
 
-    private String alertFingerprint(Event alertEvent) {
-        Map<String, String> map = alertEvent.getParameters();
-        return map.get(AlertEventPublisher.PLUGIN_ID)
-                + "/"
-                + map.get(AlertEventPublisher.NAME)
-                + "/"
-                + map.get(AlertEventPublisher.RISK)
-                + "/"
-                + map.get(AlertEventPublisher.CONFIDENCE);
+    private record AlertFingerprint(
+            String pluginId,
+            String name,
+            String risk,
+            String confidence,
+            String alertId,
+            String uri,
+            String parameter) {}
+
+    private AlertFingerprint alertFingerprint(final Event alertEvent) {
+        final Map<String, String> map = alertEvent.getParameters();
+        return new AlertFingerprint(
+                map.get(AlertEventPublisher.PLUGIN_ID),
+                map.get(AlertEventPublisher.NAME),
+                map.get(AlertEventPublisher.RISK),
+                map.get(AlertEventPublisher.CONFIDENCE),
+                map.get(AlertEventPublisher.ALERT_ID),
+                map.get(AlertEventPublisher.URI),
+                map.get(AlertEventPublisher.PARAM));
     }
 
     @Override
