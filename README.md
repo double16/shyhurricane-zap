@@ -45,6 +45,29 @@ Sending runs in the background. The Output tab reports counts of sent findings, 
 
 The sender processes one manual batch at a time and holds up to 16 pending batches. If busy, it reports that the new selection was not queued so you can try again later. Connections time out after 5 seconds and response reads after 15 seconds. Unloading the extension stops the sender and clears pending batches.
 
+## Finding metadata
+
+Automatic and manual `/findings` submissions retain their target URL (including exact query values and escaping), title, and Markdown, and include structured `metadata`:
+
+| Field | Mapping |
+| --- | --- |
+| `source`, `rule_id` | `zap` and the plugin ID as a string. |
+| `source_finding_id` | Alert-instance ID as a string; omitted for negative IDs, including the SDK's `-1` sentinel. |
+| `severity` | ZAP Informational/Low/Medium/High → `informational`/`low`/`medium`/`high`. |
+| `confidence` | Low/Medium/High/Confirmed → `low`/`medium`/`high`/`high`; omitted for false positives. |
+| `native_severity`, `native_confidence` | Original SDK labels when available. Unsupported numeric values normalize to `unknown` and omit unavailable native labels. |
+| `verification_status` | `false_positive` for False Positive; otherwise `unverified`, including Confirmed. |
+| `affected_method` | Uppercase method from the associated HTTP message; omitted when unavailable or blank. Markdown retains its GET fallback. |
+| `cwe_ids` | Singleton list of canonical strings for positive CWE IDs, such as `["CWE-79"]`. |
+| `vulnerability_types` | CWE-79 → `xss`; CWE-78/89 → `injection`; CWE-918 → `ssrf`. Each mapped type is sent in a singleton list. Other CWEs omit this field; prose is not used to infer it. |
+| `parameter.name` | Nonblank alert parameter name; location is omitted. |
+
+For example, a CWE-79 finding for `http://example.com/search?q=test` includes `"cwe_ids": ["CWE-79"]` and `"vulnerability_types": ["xss"]`. Metadata omits unavailable source coordinates, timestamps, capture IDs, and hashes, and copies no request values, bodies, cookies, or authorization data. Existing Markdown details are preserved.
+
+Automatic duplicate suppression compares the rule, name, risk, confidence, alert-instance ID, exact URI, and parameter as separate tuple fields. Distinct alert instances, including instances with different methods, are retained. Repeated identical events are suppressed atomically. Manual selection deduplication and intentional resending remain unchanged.
+
+Delivery happens in the background. Any HTTP 2xx response, including 201, counts as accepted; server processing may continue asynchronously. Failed posts are not retried, including retries without metadata after a server error.
+
 ## Development checks
 
 Run `./gradlew spotlessApply test jacocoTestReport jacocoTestCoverageVerification build` before submitting changes. Coverage reports are written to `build/reports/jacoco/test/`; the forwarding and context-menu implementation must maintain at least 80% line and branch coverage per source file.

@@ -1,6 +1,13 @@
 ShyHurricane-ZAP Changelog
 ==========================
 
+1.3.0
+-----
+
+## Features
+
+- Enrich automatic and manual findings with structured ZAP severity, confidence, verification, rule and instance IDs, HTTP method, parameter, CWE IDs, and explicit CWE categories.
+
 1.2.0
 ----------
 
