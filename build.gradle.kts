@@ -24,7 +24,7 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.3")
     testImplementation("commons-configuration:commons-configuration:1.10")
     testImplementation("org.zaproxy:zap:2.17.0")
-    testImplementation("org.mockito:mockito-core:5.20.0")
+    testImplementation("org.mockito:mockito-core:5.24.0")
 }
 
 zapAddOn {
