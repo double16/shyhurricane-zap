@@ -1,7 +1,7 @@
 plugins {
     id("org.zaproxy.add-on") version "0.13.1"
-    id("com.diffplug.spotless") version "8.10.4"
-    id("io.github.ben-manes.versions") version "0.66.0"
+    id("com.diffplug.spotless") version "8.11.0"
+    id("io.github.ben-manes.versions") version "0.67.0"
     java
     jacoco
 }
@@ -24,7 +24,7 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.3")
     testImplementation("commons-configuration:commons-configuration:1.10")
     testImplementation("org.zaproxy:zap:2.17.0")
-    testImplementation("org.mockito:mockito-core:5.20.0")
+    testImplementation("org.mockito:mockito-core:5.24.0")
 }
 
 zapAddOn {
